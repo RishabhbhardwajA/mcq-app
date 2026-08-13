@@ -1,0 +1,35 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 1. Tests Collection
+    match /tests/{testId} {
+      // Anyone can read a test if they have the ID (needed for students to join)
+      // Note: In a stricter app, you might only allow reads if a student is registered for it.
+      allow read: if true;
+      
+      // Only authenticated teachers can create/update tests
+      // The teacherId of the test MUST match the UID of the logged-in user
+      allow create, update: if request.auth != null 
+                            && request.resource.data.teacherId == request.auth.uid;
+                            
+      // Only the teacher who created it can delete it
+      allow delete: if request.auth != null 
+                    && resource.data.teacherId == request.auth.uid;
+    }
+    
+    // 2. Results Collection
+    match /results/{resultId} {
+      // Anyone can read results (needed for duplicate-attempt check by students)
+      allow read: if true;
+      
+      // Anyone can submit a result (students aren't authenticated in this app design)
+      allow create: if true;
+      
+      // Only authenticated users (teachers) can delete results
+      allow update: if false;
+      allow delete: if request.auth != null;
+    }
+  }
+}

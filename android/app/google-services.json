@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "673970899276",
+    "project_id": "mcq-app-67b4b",
+    "storage_bucket": "mcq-app-67b4b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:673970899276:android:d365f69e053071cc4227e9",
+        "android_client_info": {
+          "package_name": "com.mcqexam.mcq_exam_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC8HRpjUFh1iYioSbsPk_nuH-IFMKWoRRw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
