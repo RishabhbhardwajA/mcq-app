@@ -1,4 +1,4 @@
-import 'dart:io';
+import '../../core/utils/file_reader.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
@@ -118,7 +118,7 @@ class _CreateTestScreenState extends ConsumerState<CreateTestScreen> {
 
       List<int>? bytes = result.files.single.bytes;
       if (bytes == null && result.files.single.path != null) {
-        bytes = File(result.files.single.path!).readAsBytesSync();
+        bytes = getFileBytes(result.files.single.path!);
       }
 
       if (bytes == null) {
