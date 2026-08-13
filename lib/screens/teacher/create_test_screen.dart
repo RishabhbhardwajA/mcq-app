@@ -35,6 +35,7 @@ class CreateTestScreen extends ConsumerStatefulWidget {
 class _CreateTestScreenState extends ConsumerState<CreateTestScreen> {
   final List<Map<String, dynamic>> _questions = [];
   final _testNameController = TextEditingController();
+  final _scrollController = ScrollController();
   int _selectedDuration = 10;
   bool _hasNegativeMarking = false;
   bool _isImportingPdf = false;
@@ -263,6 +264,92 @@ class _CreateTestScreenState extends ConsumerState<CreateTestScreen> {
     }
   }
 
+  void _showQuestionNavigator() {
+    if (_questions.isEmpty) return;
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppTheme.surfaceContainer,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.6,
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle bar
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppTheme.textMuted,
+                  borderRadius: BorderRadius.circular(50),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  const Icon(Icons.grid_view_rounded, color: AppTheme.emerald),
+                  const SizedBox(width: 8),
+                  Text('Jump to Question', style: AppTheme.headlineSM),
+                ],
+              ),
+              const SizedBox(height: 20),
+              // Grid
+              Expanded(
+                child: GridView.builder(
+                  physics: const BouncingScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 5,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                  ),
+                  itemCount: _questions.length,
+                  itemBuilder: (context, index) {
+                    return GestureDetector(
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        
+                        // Estimate scroll offset (Top part ~450px, each question ~130px)
+                        final targetOffset = 450.0 + (index * 130.0);
+                        
+                        // Cap at max scroll extent
+                        final maxScroll = _scrollController.position.maxScrollExtent;
+                        final finalOffset = targetOffset > maxScroll ? maxScroll : targetOffset;
+                        
+                        _scrollController.animateTo(
+                          finalOffset,
+                          duration: const Duration(milliseconds: 500),
+                          curve: Curves.easeInOut,
+                        );
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: AppTheme.emerald.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppTheme.emerald.withValues(alpha: 0.3)),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          '${index + 1}',
+                          style: AppTheme.headlineSM.copyWith(color: AppTheme.emerald),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -271,9 +358,19 @@ class _CreateTestScreenState extends ConsumerState<CreateTestScreen> {
         child: SafeArea(
           child: Column(
             children: [
-              GlassAppBar(title: widget.isEditing ? 'Edit Test' : 'Create New Test'),
+              GlassAppBar(
+                title: widget.isEditing ? 'Edit Test' : 'Create New Test',
+                actions: [
+                  if (_questions.isNotEmpty)
+                    IconButton(
+                      icon: const Icon(Icons.grid_view_rounded, color: AppTheme.emerald),
+                      onPressed: _showQuestionNavigator,
+                    ),
+                ],
+              ),
               Expanded(
                 child: CustomScrollView(
+                  controller: _scrollController,
                   slivers: [
                     SliverPadding(
                       padding: const EdgeInsets.symmetric(horizontal: 24.0),
