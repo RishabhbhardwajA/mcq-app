@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:safe_device/safe_device.dart';
 
@@ -14,7 +14,7 @@ class SecurityManager {
 
   /// Disables exam security features (e.g., when the exam is finished).
   static Future<void> disableExamSecurity() async {
-    if (Platform.isAndroid) {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
       try {
         await platform.invokeMethod('disableSecurity');
       } catch (e) {
@@ -25,7 +25,7 @@ class SecurityManager {
 
   /// Blocks screenshots and screen recording.
   static Future<void> _disableScreenshots() async {
-    if (Platform.isAndroid) {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
       try {
         await platform.invokeMethod('enableSecurity');
       } catch (e) {
