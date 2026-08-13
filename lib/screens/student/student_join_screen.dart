@@ -120,14 +120,16 @@ class _StudentJoinScreenState extends ConsumerState<StudentJoinScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (kIsWeb) {
+    final isMobile = defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS;
+    
+    if (kIsWeb || !isMobile) {
       return Scaffold(
         backgroundColor: AppTheme.background,
         body: GlassBackground(
           child: SafeArea(
             child: Column(
               children: [
-                const GlassAppBar(title: 'ExamGuard'),
+                const GlassAppBar(title: 'ExamGuard', showBack: true),
                 Expanded(
                   child: Center(
                     child: Padding(
@@ -140,10 +142,10 @@ class _StudentJoinScreenState extends ConsumerState<StudentJoinScreen> {
                           children: [
                             const Icon(Icons.lock_outline_rounded, color: AppTheme.warning, size: 48),
                             const SizedBox(height: 20),
-                            Text('Student mode unavailable on web', style: AppTheme.headlineLG),
+                            Text('Exams Blocked on this Device', style: AppTheme.headlineLG, textAlign: TextAlign.center),
                             const SizedBox(height: 8),
                             Text(
-                              'Students can take tests only from the app version. Please ask your teacher for the supported device.',
+                              'To ensure a secure environment, exams can ONLY be taken from the Mobile App (Android/iOS).',
                               style: AppTheme.bodyLG,
                               textAlign: TextAlign.center,
                             ),
