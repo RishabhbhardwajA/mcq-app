@@ -66,8 +66,16 @@ class DatabaseService {
     int total, {
     int? maxScore,
     String? testName,
+    List<dynamic>? questions,
+    Map<int, String>? selectedAnswers,
   }) async {
     final user = _auth.currentUser;
+
+    // Convert integer keys to string keys for Firestore compatibility
+    Map<String, String>? firestoreAnswers;
+    if (selectedAnswers != null) {
+      firestoreAnswers = selectedAnswers.map((key, value) => MapEntry(key.toString(), value));
+    }
 
     await _db.collection('results').add({
       'testId': code,
@@ -78,6 +86,8 @@ class DatabaseService {
       'score': score,
       'total': total,
       if (maxScore != null) 'maxScore': maxScore,
+      if (questions != null) 'questions': questions,
+      if (firestoreAnswers != null) 'selectedAnswers': firestoreAnswers,
       'submittedAt': FieldValue.serverTimestamp(),
     });
   }

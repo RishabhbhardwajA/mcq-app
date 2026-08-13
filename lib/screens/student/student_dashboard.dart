@@ -7,6 +7,7 @@ import '../../core/services/database_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/glass_widgets.dart';
 import 'student_join_screen.dart';
+import 'student_result_screen.dart';
 
 class StudentDashboard extends ConsumerWidget {
   const StudentDashboard({super.key});
@@ -161,8 +162,43 @@ class StudentDashboard extends ConsumerWidget {
                         final maxScore = data['maxScore'] as int? ?? total;
                         final double pct =
                             maxScore > 0 ? (score / maxScore) * 100 : 0.0;
+                        final questions = data['questions'] as List<dynamic>?;
+                        final selectedAnswersMap = data['selectedAnswers'] as Map<String, dynamic>?;
 
-                        return GlassCard(
+                        return GestureDetector(
+                          onTap: () {
+                            if (questions == null || selectedAnswersMap == null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: const Text('Detailed view is not available for older tests.'),
+                                  backgroundColor: AppTheme.textMuted,
+                                ),
+                              );
+                              return;
+                            }
+                            
+                            // Convert String keys back to int keys for StudentResultScreen
+                            final selectedAnswers = <int, String>{};
+                            selectedAnswersMap.forEach((key, value) {
+                              selectedAnswers[int.parse(key)] = value.toString();
+                            });
+
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => StudentResultScreen(
+                                  testName: testName.toString(),
+                                  studentName: data['studentName'] ?? name,
+                                  score: score,
+                                  total: total,
+                                  maxScore: maxScore,
+                                  questions: questions,
+                                  selectedAnswers: selectedAnswers,
+                                ),
+                              ),
+                            );
+                          },
+                          child: GlassCard(
                           padding: const EdgeInsets.all(18),
                           child: Row(
                             children: [
@@ -212,7 +248,7 @@ class StudentDashboard extends ConsumerWidget {
                               ),
                             ],
                           ),
-                        );
+                        ));
                       },
                     );
                   },

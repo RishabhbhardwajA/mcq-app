@@ -160,6 +160,8 @@ class _StudentTestScreenState extends ConsumerState<StudentTestScreen> with Widg
         questions.length,
         maxScore: maxScore,
         testName: _testData!['testName'] ?? 'Exam',
+        questions: questions,
+        selectedAnswers: Map<int, String>.from(_selectedAnswers),
       );
       
       if (mounted) {

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
@@ -114,9 +115,13 @@ class _CreateTestScreenState extends ConsumerState<CreateTestScreen> {
 
       if (result == null || result.files.isEmpty) return;
 
-      final bytes = result.files.single.bytes;
+      List<int>? bytes = result.files.single.bytes;
+      if (bytes == null && result.files.single.path != null) {
+        bytes = File(result.files.single.path!).readAsBytesSync();
+      }
+
       if (bytes == null) {
-        throw Exception('Unable to read the selected PDF file.');
+        throw Exception('Unable to read the selected PDF file. File might be too large or corrupted.');
       }
 
       final document = PdfDocument(inputBytes: bytes);
@@ -268,264 +273,271 @@ class _CreateTestScreenState extends ConsumerState<CreateTestScreen> {
             children: [
               GlassAppBar(title: widget.isEditing ? 'Edit Test' : 'Create New Test'),
               Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const SizedBox(height: 16),
-                      // Test Name Input
-                      GlassTextField(
-                        controller: _testNameController,
-                        hintText: 'Test Name (e.g. Flutter Basics)',
-                        prefixIcon: Icons.edit_rounded,
-                      ),
-                      const SizedBox(height: 16),
-                      
-                      // Duration Selector
-                      GlassCard(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                        child: Row(
-                          children: [
-                            Text('Duration', style: AppTheme.bodyLG),
-                            const Spacer(),
-                            GestureDetector(
-                              onTap: () {
-                                if (_selectedDuration > 5) setState(() => _selectedDuration -= 5);
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: AppTheme.emerald),
-                                ),
-                                child: const Icon(Icons.remove_rounded, color: AppTheme.emerald, size: 16),
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Text('$_selectedDuration Minutes', style: AppTheme.labelMD),
-                            const SizedBox(width: 16),
-                            GestureDetector(
-                              onTap: () {
-                                setState(() => _selectedDuration += 5);
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: AppTheme.emerald),
-                                ),
-                                child: const Icon(Icons.add_rounded, color: AppTheme.emerald, size: 16),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      
-                      // Negative Marking Selector
-                      GlassCard(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('Negative Marking', style: AppTheme.bodyLG),
-                                  Text('Correct: +4, Wrong: -1', style: AppTheme.bodySM.copyWith(color: AppTheme.textMuted)),
-                                ],
-                              ),
-                            ),
-                            Switch(
-                              value: _hasNegativeMarking,
-                              onChanged: (val) => setState(() => _hasNegativeMarking = val),
-                              activeColor: AppTheme.emerald,
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      
-                      // Action Buttons
-                      Row(
-                        children: [
-                          Expanded(
-                            child: GlassButton(
-                              label: 'Add Manually',
-                              icon: Icons.add_rounded,
-                              onPressed: _addManualQuestion,
-                            ),
+                child: CustomScrollView(
+                  slivers: [
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                      sliver: SliverList(
+                        delegate: SliverChildListDelegate([
+                          const SizedBox(height: 16),
+                          // Test Name Input
+                          GlassTextField(
+                            controller: _testNameController,
+                            hintText: 'Test Name (e.g. Flutter Basics)',
+                            prefixIcon: Icons.edit_rounded,
                           ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: EmeraldButton(
-                              label: 'Generate AI',
-                              icon: Icons.auto_awesome_rounded,
-                              onPressed: _generateWithAI,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      GlassButton(
-                        label: _isImportingPdf ? 'Importing PDF...' : 'Import Questions from PDF',
-                        icon: Icons.picture_as_pdf_outlined,
-                        onPressed: _isImportingPdf ? null : _importFromPdf,
-                      ),
-                      const SizedBox(height: 32),
-                      
-                      // Questions List Header
-                      Row(
-                        children: [
-                          Text('Questions (${_questions.length})', style: AppTheme.headlineSM),
-                          const Spacer(),
-                          if (_questions.length > 1)
-                            Text('Hold & drag to reorder', style: AppTheme.labelSM),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      
-                      // Questions List — ReorderableListView for drag & drop
-                      Expanded(
-                        child: _questions.isEmpty
-                            ? Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    // Empty state illustration
-                                    Container(
-                                      width: 100,
-                                      height: 100,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: AppTheme.emerald.withValues(alpha: 0.06),
-                                        border: Border.all(color: AppTheme.emerald.withValues(alpha: 0.15)),
-                                      ),
-                                      child: Icon(Icons.quiz_outlined, size: 48, color: AppTheme.textMuted.withValues(alpha: 0.6)),
+                          const SizedBox(height: 16),
+                          
+                          // Duration Selector
+                          GlassCard(
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                            child: Row(
+                              children: [
+                                Text('Duration', style: AppTheme.bodyLG),
+                                const Spacer(),
+                                GestureDetector(
+                                  onTap: () {
+                                    if (_selectedDuration > 5) setState(() => _selectedDuration -= 5);
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: AppTheme.emerald),
                                     ),
-                                    const SizedBox(height: 20),
-                                    Text('No questions added yet', style: AppTheme.headlineSM.copyWith(color: AppTheme.textMuted)),
-                                    const SizedBox(height: 8),
-                                    Text('Add manually or generate with AI', style: AppTheme.bodySM),
-                                  ],
+                                    child: const Icon(Icons.remove_rounded, color: AppTheme.emerald, size: 16),
+                                  ),
                                 ),
-                              )
-                            : ReorderableListView.builder(
-                                proxyDecorator: (child, index, animation) {
-                                  return Material(
-                                    color: Colors.transparent,
-                                    elevation: 4,
-                                    shadowColor: AppTheme.emerald.withValues(alpha: 0.3),
-                                    borderRadius: BorderRadius.circular(20),
-                                    child: child,
-                                  );
-                                },
-                                buildDefaultDragHandles: false,
-                                itemCount: _questions.length,
-                                onReorder: _reorderQuestion,
-                                itemBuilder: (context, index) {
-                                  final q = _questions[index];
-                                  return Padding(
-                                    key: ValueKey('q_$index'),
-                                    padding: const EdgeInsets.only(bottom: 16),
-                                    child: GlassCard(
-                                      padding: const EdgeInsets.all(16),
-                                      child: Row(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                const SizedBox(width: 16),
+                                Text('$_selectedDuration Minutes', style: AppTheme.labelMD),
+                                const SizedBox(width: 16),
+                                GestureDetector(
+                                  onTap: () {
+                                    setState(() => _selectedDuration += 5);
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: AppTheme.emerald),
+                                    ),
+                                    child: const Icon(Icons.add_rounded, color: AppTheme.emerald, size: 16),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          
+                          // Negative Marking Selector
+                          GlassCard(
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text('Negative Marking', style: AppTheme.bodyLG),
+                                      Text('Correct: +4, Wrong: -1', style: AppTheme.bodySM.copyWith(color: AppTheme.textMuted)),
+                                    ],
+                                  ),
+                                ),
+                                Switch(
+                                  value: _hasNegativeMarking,
+                                  onChanged: (val) => setState(() => _hasNegativeMarking = val),
+                                  activeColor: AppTheme.emerald,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          
+                          // Action Buttons
+                          Row(
+                            children: [
+                              Expanded(
+                                child: GlassButton(
+                                  label: 'Add Manually',
+                                  icon: Icons.add_rounded,
+                                  onPressed: _addManualQuestion,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: EmeraldButton(
+                                  label: 'Generate AI',
+                                  icon: Icons.auto_awesome_rounded,
+                                  onPressed: _generateWithAI,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          GlassButton(
+                            label: _isImportingPdf ? 'Importing PDF...' : 'Import Questions from PDF',
+                            icon: Icons.picture_as_pdf_outlined,
+                            onPressed: _isImportingPdf ? null : _importFromPdf,
+                          ),
+                          const SizedBox(height: 32),
+                          
+                          // Questions List Header
+                          Row(
+                            children: [
+                              Text('Questions (${_questions.length})', style: AppTheme.headlineSM),
+                              const Spacer(),
+                              if (_questions.length > 1)
+                                Text('Hold & drag to reorder', style: AppTheme.labelSM),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                        ]),
+                      ),
+                    ),
+                    
+                    // Questions List
+                    if (_questions.isEmpty)
+                      SliverPadding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                        sliver: SliverToBoxAdapter(
+                          child: Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const SizedBox(height: 32),
+                                // Empty state illustration
+                                Container(
+                                  width: 100,
+                                  height: 100,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: AppTheme.emerald.withValues(alpha: 0.06),
+                                    border: Border.all(color: AppTheme.emerald.withValues(alpha: 0.15)),
+                                  ),
+                                  child: Icon(Icons.quiz_outlined, size: 48, color: AppTheme.textMuted.withValues(alpha: 0.6)),
+                                ),
+                                const SizedBox(height: 20),
+                                Text('No questions added yet', style: AppTheme.headlineSM.copyWith(color: AppTheme.textMuted)),
+                                const SizedBox(height: 8),
+                                Text('Add manually or generate with AI', style: AppTheme.bodySM),
+                                const SizedBox(height: 32),
+                              ],
+                            ),
+                          ),
+                        ),
+                      )
+                    else
+                      SliverPadding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                        sliver: SliverReorderableList(
+                          itemCount: _questions.length,
+                          onReorder: _reorderQuestion,
+                          itemBuilder: (context, index) {
+                            final q = _questions[index];
+                            return Material(
+                              key: ValueKey('q_$index'),
+                              color: Colors.transparent,
+                              child: Padding(
+                                padding: const EdgeInsets.only(bottom: 16),
+                                child: GlassCard(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      // Drag Handle
+                                      ReorderableDragStartListener(
+                                        index: index,
+                                        child: Container(
+                                          padding: const EdgeInsets.all(8),
+                                          child: Icon(Icons.drag_handle_rounded, color: AppTheme.textMuted, size: 20),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      // Q Number Badge
+                                      Container(
+                                        padding: const EdgeInsets.all(10),
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.emerald.withValues(alpha: 0.15),
+                                          shape: BoxShape.circle,
+                                          border: Border.all(color: AppTheme.emerald.withValues(alpha: 0.3)),
+                                        ),
+                                        child: Text(
+                                          '${index + 1}',
+                                          style: AppTheme.labelMD.copyWith(color: AppTheme.emerald),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      // Question Info
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              q['question'],
+                                              style: AppTheme.bodyLG.copyWith(color: AppTheme.textPrimary, fontWeight: FontWeight.w500),
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            const SizedBox(height: 6),
+                                            Text(
+                                              'Ans: ${q['correctAnswer']}',
+                                              style: AppTheme.bodySM.copyWith(color: AppTheme.mint),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      // Edit & Delete Actions
+                                      Column(
+                                        mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          // Drag Handle
-                                          ReorderableDragStartListener(
-                                            index: index,
+                                          GestureDetector(
+                                            onTap: () => _editQuestion(index),
                                             child: Container(
-                                              padding: const EdgeInsets.all(8),
-                                              child: Icon(Icons.drag_handle_rounded, color: AppTheme.textMuted, size: 20),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          // Q Number Badge
-                                          Container(
-                                            padding: const EdgeInsets.all(10),
-                                            decoration: BoxDecoration(
-                                              color: AppTheme.emerald.withValues(alpha: 0.15),
-                                              shape: BoxShape.circle,
-                                              border: Border.all(color: AppTheme.emerald.withValues(alpha: 0.3)),
-                                            ),
-                                            child: Text(
-                                              '${index + 1}',
-                                              style: AppTheme.labelMD.copyWith(color: AppTheme.emerald),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 12),
-                                          // Question Info
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  q['question'],
-                                                  style: AppTheme.bodyLG.copyWith(color: AppTheme.textPrimary, fontWeight: FontWeight.w500),
-                                                  maxLines: 2,
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
-                                                const SizedBox(height: 6),
-                                                Text(
-                                                  'Ans: ${q['correctAnswer']}',
-                                                  style: AppTheme.bodySM.copyWith(color: AppTheme.mint),
-                                                  maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          // Edit & Delete Actions
-                                          Column(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              GestureDetector(
-                                                onTap: () => _editQuestion(index),
-                                                child: Container(
-                                                  padding: const EdgeInsets.all(6),
-                                                  decoration: BoxDecoration(
-                                                    color: AppTheme.emerald.withValues(alpha: 0.1),
-                                                    shape: BoxShape.circle,
-                                                  ),
-                                                  child: Icon(Icons.edit_rounded, color: AppTheme.emerald, size: 16),
-                                                ),
+                                              padding: const EdgeInsets.all(6),
+                                              decoration: BoxDecoration(
+                                                color: AppTheme.emerald.withValues(alpha: 0.1),
+                                                shape: BoxShape.circle,
                                               ),
-                                              const SizedBox(height: 8),
-                                              GestureDetector(
-                                                onTap: () => setState(() => _questions.removeAt(index)),
-                                                child: Container(
-                                                  padding: const EdgeInsets.all(6),
-                                                  decoration: BoxDecoration(
-                                                    color: AppTheme.error.withValues(alpha: 0.1),
-                                                    shape: BoxShape.circle,
-                                                  ),
-                                                  child: Icon(Icons.delete_outline_rounded, color: AppTheme.error, size: 16),
-                                                ),
+                                              child: Icon(Icons.edit_rounded, color: AppTheme.emerald, size: 16),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          GestureDetector(
+                                            onTap: () => setState(() => _questions.removeAt(index)),
+                                            child: Container(
+                                              padding: const EdgeInsets.all(6),
+                                              decoration: BoxDecoration(
+                                                color: AppTheme.error.withValues(alpha: 0.1),
+                                                shape: BoxShape.circle,
                                               ),
-                                            ],
+                                              child: Icon(Icons.delete_outline_rounded, color: AppTheme.error, size: 16),
+                                            ),
                                           ),
                                         ],
                                       ),
-                                    ),
-                                  );
-                                },
+                                    ],
+                                  ),
+                                ),
                               ),
+                            );
+                          },
+                        ),
                       ),
                       
-                      // Publish CTA
-                      Padding(
-                        padding: const EdgeInsets.only(top: 16.0, bottom: 24.0),
+                    // Publish CTA
+                    SliverPadding(
+                      padding: const EdgeInsets.only(left: 24.0, right: 24.0, top: 16.0, bottom: 40.0),
+                      sliver: SliverToBoxAdapter(
                         child: EmeraldButton(
                           label: widget.isEditing ? 'Update Test ✅' : 'Publish Test 🚀',
                           isLoading: _isPublishing,
                           onPressed: _publishTest,
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ],

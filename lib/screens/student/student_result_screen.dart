@@ -1,4 +1,7 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:syncfusion_flutter_pdf/pdf.dart';
+import 'package:printing/printing.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/glass_widgets.dart';
 
@@ -91,6 +94,14 @@ class StudentResultScreen extends StatelessWidget {
                         const SizedBox(height: 16),
                         // Question Review List
                         ...List.generate(questions.length, (index) => _buildQuestionReview(index)),
+                        const SizedBox(height: 16),
+                      ],
+                      if (!wasCheating) ...[
+                        EmeraldButton(
+                          label: 'Download PDF Report',
+                          icon: Icons.picture_as_pdf_rounded,
+                          onPressed: () => _downloadPDF(context),
+                        ),
                         const SizedBox(height: 16),
                       ],
                       // Done Button
@@ -373,5 +384,90 @@ class StudentResultScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _downloadPDF(BuildContext context) async {
+    try {
+      final PdfDocument document = PdfDocument();
+      final PdfPage page = document.pages.add();
+      final Size pageSize = page.getClientSize();
+
+      // Title
+      final PdfFont titleFont = PdfStandardFont(PdfFontFamily.helvetica, 24, style: PdfFontStyle.bold);
+      final PdfFont headingFont = PdfStandardFont(PdfFontFamily.helvetica, 16, style: PdfFontStyle.bold);
+      final PdfFont regularFont = PdfStandardFont(PdfFontFamily.helvetica, 12);
+
+      page.graphics.drawString(
+        'Exam Results: $testName',
+        titleFont,
+        bounds: Rect.fromLTWH(0, 0, pageSize.width, 30),
+      );
+
+      // Student details
+      page.graphics.drawString(
+        'Student: $studentName',
+        headingFont,
+        bounds: Rect.fromLTWH(0, 40, pageSize.width, 20),
+      );
+      
+      page.graphics.drawString(
+        'Score: $score / $total (${percentage.toStringAsFixed(1)}%) - Grade: $grade',
+        headingFont,
+        bounds: Rect.fromLTWH(0, 65, pageSize.width, 20),
+      );
+
+      // Questions Loop
+      double yPos = 110;
+      for (int i = 0; i < questions.length; i++) {
+        // Add new page if space is low
+        if (yPos > pageSize.height - 100) {
+          final PdfPage newPage = document.pages.add();
+          yPos = 20;
+          page.graphics.drawString('Continued...', regularFont, bounds: Rect.fromLTWH(0, 0, pageSize.width, 20));
+        }
+
+        final q = questions[i];
+        final correctAnswer = q['correctAnswer'];
+        final selectedAnswer = selectedAnswers[i] ?? 'Skipped';
+        
+        page.graphics.drawString(
+          'Q${i + 1}: ${q['question']}',
+          headingFont,
+          bounds: Rect.fromLTWH(0, yPos, pageSize.width, 40),
+          format: PdfStringFormat(wordWrap: PdfWordWrapType.word),
+        );
+        yPos += 25;
+
+        final bool isCorrect = selectedAnswer == correctAnswer;
+        
+        page.graphics.drawString(
+          'Your Answer: $selectedAnswer ${isCorrect ? '(Correct)' : '(Incorrect)'}',
+          regularFont,
+          bounds: Rect.fromLTWH(10, yPos, pageSize.width, 20),
+        );
+        yPos += 20;
+
+        if (!isCorrect) {
+          page.graphics.drawString(
+            'Correct Answer: $correctAnswer',
+            regularFont,
+            bounds: Rect.fromLTWH(10, yPos, pageSize.width, 20),
+          );
+          yPos += 20;
+        }
+
+        yPos += 20; // Space between questions
+      }
+
+      final List<int> bytes = document.saveSync();
+      document.dispose();
+
+      await Printing.sharePdf(bytes: Uint8List.fromList(bytes), filename: '${testName}_Result.pdf');
+    } catch (e) {
+      debugPrint('Error generating PDF: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to generate PDF')),
+      );
+    }
   }
 }
