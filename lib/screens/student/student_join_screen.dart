@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/auth/auth_service.dart';
 import '../../core/services/database_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/glass_widgets.dart';
@@ -16,6 +18,16 @@ class _StudentJoinScreenState extends ConsumerState<StudentJoinScreen> {
   final _testCodeController = TextEditingController();
   final _nameController = TextEditingController();
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final user = ref.read(authServiceProvider).currentUser;
+    final displayName = user?.displayName?.trim();
+    if (displayName != null && displayName.isNotEmpty) {
+      _nameController.text = displayName;
+    }
+  }
 
   void _joinTest() async {
     final code = _testCodeController.text.trim();
@@ -108,6 +120,46 @@ class _StudentJoinScreenState extends ConsumerState<StudentJoinScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (kIsWeb) {
+      return Scaffold(
+        backgroundColor: AppTheme.background,
+        body: GlassBackground(
+          child: SafeArea(
+            child: Column(
+              children: [
+                const GlassAppBar(title: 'ExamGuard'),
+                Expanded(
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                      child: GlassCard(
+                        emeraldBorder: true,
+                        padding: const EdgeInsets.all(32.0),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.lock_outline_rounded, color: AppTheme.warning, size: 48),
+                            const SizedBox(height: 20),
+                            Text('Student mode unavailable on web', style: AppTheme.headlineLG),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Students can take tests only from the app version. Please ask your teacher for the supported device.',
+                              style: AppTheme.bodyLG,
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppTheme.background,
       body: GlassBackground(

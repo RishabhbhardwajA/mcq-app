@@ -153,7 +153,14 @@ class _StudentTestScreenState extends ConsumerState<StudentTestScreen> with Widg
 
     try {
       final dbService = ref.read(databaseServiceProvider);
-      await dbService.submitResult(widget.testId, widget.studentName, score, questions.length, maxScore: maxScore);
+      await dbService.submitResult(
+        widget.testId,
+        widget.studentName,
+        score,
+        questions.length,
+        maxScore: maxScore,
+        testName: _testData!['testName'] ?? 'Exam',
+      );
       
       if (mounted) {
         Navigator.of(context).pushReplacement(

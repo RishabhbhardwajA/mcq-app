@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
+import 'package:syncfusion_flutter_pdf/pdf.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/services/ai_service.dart';
 import '../../core/services/database_service.dart';
@@ -34,6 +36,7 @@ class _CreateTestScreenState extends ConsumerState<CreateTestScreen> {
   final _testNameController = TextEditingController();
   int _selectedDuration = 10;
   bool _hasNegativeMarking = false;
+  bool _isImportingPdf = false;
 
   @override
   void initState() {
@@ -90,6 +93,66 @@ class _CreateTestScreenState extends ConsumerState<CreateTestScreen> {
         setState(() => _questions.addAll(generatedQuestions));
       }
     });
+  }
+
+  Future<void> _importFromPdf() async {
+    final count = await showDialog<int>(
+      context: context,
+      builder: (context) => const _PdfImportDialog(),
+    );
+
+    if (count == null) return;
+
+    setState(() => _isImportingPdf = true);
+
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+        withData: true,
+      );
+
+      if (result == null || result.files.isEmpty) return;
+
+      final bytes = result.files.single.bytes;
+      if (bytes == null) {
+        throw Exception('Unable to read the selected PDF file.');
+      }
+
+      final document = PdfDocument(inputBytes: bytes);
+      final extractor = PdfTextExtractor(document);
+      final extractedText = extractor.extractText();
+      document.dispose();
+
+      final aiService = ref.read(aiServiceProvider);
+      final generatedQuestions = await aiService.generateQuestionsFromSource(
+        extractedText,
+        count,
+      );
+
+      if (mounted && generatedQuestions != null) {
+        setState(() => _questions.addAll(generatedQuestions));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${generatedQuestions.length} questions imported from PDF.'),
+            backgroundColor: AppTheme.emerald,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('PDF import failed: $e'),
+            backgroundColor: AppTheme.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isImportingPdf = false);
+      }
+    }
   }
 
   bool _isPublishing = false;
@@ -303,6 +366,12 @@ class _CreateTestScreenState extends ConsumerState<CreateTestScreen> {
                             ),
                           ),
                         ],
+                      ),
+                      const SizedBox(height: 16),
+                      GlassButton(
+                        label: _isImportingPdf ? 'Importing PDF...' : 'Import Questions from PDF',
+                        icon: Icons.picture_as_pdf_outlined,
+                        onPressed: _isImportingPdf ? null : _importFromPdf,
                       ),
                       const SizedBox(height: 32),
                       
@@ -731,6 +800,79 @@ class _AIGenerationDialogState extends ConsumerState<_AIGenerationDialog> {
                     label: 'Generate',
                     isLoading: _isLoading,
                     onPressed: _isLoading ? null : _generate,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PdfImportDialog extends StatefulWidget {
+  const _PdfImportDialog();
+
+  @override
+  State<_PdfImportDialog> createState() => _PdfImportDialogState();
+}
+
+class _PdfImportDialogState extends State<_PdfImportDialog> {
+  final _countController = TextEditingController(text: '10');
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: AppTheme.surfaceContainer,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+        side: BorderSide(color: AppTheme.glassBorder),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.picture_as_pdf_outlined, color: AppTheme.emerald),
+                const SizedBox(width: 8),
+                Text('Import from PDF', style: AppTheme.headlineSM),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Select a PDF and we will generate test questions from its content.',
+              style: AppTheme.bodySM,
+            ),
+            const SizedBox(height: 20),
+            GlassTextField(
+              controller: _countController,
+              hintText: 'Number of Questions',
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text('Cancel', style: AppTheme.labelMD.copyWith(color: AppTheme.textMuted)),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: EmeraldButton(
+                    label: 'Choose PDF',
+                    onPressed: () {
+                      final count = int.tryParse(_countController.text.trim());
+                      if (count == null || count <= 0) {
+                        return;
+                      }
+                      Navigator.pop(context, count);
+                    },
                   ),
                 ),
               ],

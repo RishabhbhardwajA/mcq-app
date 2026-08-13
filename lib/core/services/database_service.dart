@@ -59,9 +59,21 @@ class DatabaseService {
     return null;
   }
 
-  Future<void> submitResult(String code, String studentName, int score, int total, {int? maxScore}) async {
+  Future<void> submitResult(
+    String code,
+    String studentName,
+    int score,
+    int total, {
+    int? maxScore,
+    String? testName,
+  }) async {
+    final user = _auth.currentUser;
+
     await _db.collection('results').add({
       'testId': code,
+      if (testName != null) 'testName': testName,
+      if (user != null) 'studentId': user.uid,
+      if (user?.email != null) 'studentEmail': user!.email,
       'studentName': studentName,
       'score': score,
       'total': total,
@@ -71,6 +83,16 @@ class DatabaseService {
   }
 
   Future<bool> hasStudentAlreadyAttempted(String code, String studentName) async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      final userQuery = await _db.collection('results')
+          .where('testId', isEqualTo: code)
+          .where('studentId', isEqualTo: user.uid)
+          .limit(1)
+          .get();
+      if (userQuery.docs.isNotEmpty) return true;
+    }
+
     final query = await _db.collection('results')
         .where('testId', isEqualTo: code)
         .where('studentName', isEqualTo: studentName)
@@ -101,6 +123,15 @@ class DatabaseService {
   Stream<QuerySnapshot> getTestResults(String code) {
     return _db.collection('results')
       .where('testId', isEqualTo: code)
+      .snapshots();
+  }
+
+  Stream<QuerySnapshot> getCurrentStudentResults() {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception('Must be logged in');
+
+    return _db.collection('results')
+      .where('studentId', isEqualTo: user.uid)
       .snapshots();
   }
 
